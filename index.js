@@ -28,9 +28,11 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-
     // products Related Apis
     const productsCollection = client.db("smartPickr").collection("products");
+    const productApplicationCollection = client
+      .db("smartPickr")
+      .collection("product_applications");
 
     app.get("/products", async (req, res) => {
       const cursor = await productsCollection.find();
@@ -38,14 +40,19 @@ async function run() {
       res.send(result);
     });
 
-    app.get('/products/:id', async(req, res)=>{
+    app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) };
       const result = await productsCollection.findOne(query);
-      res.send(result)
-    })
+      res.send(result);
+    });
 
-
+    //  product application apisAdd commentMore actions
+    app.post("/product-application", async (req, res) => {
+      const application = req.body;
+      const result = await productApplicationCollection.insertOne(application);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
