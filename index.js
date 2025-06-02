@@ -47,14 +47,45 @@ async function run() {
       res.send(result);
     });
 
-    //  product application apisAdd commentMore actions
+    //  product application apis
     app.post("/product-application", async (req, res) => {
       const application = req.body;
       const result = await productApplicationCollection.insertOne(application);
       res.send(result);
     });
 
-    // Send a ping to confirm a successful connection
+    // get data using email
+    app.get("/product-Feedback", async (req, res) => {
+      const email = req.query.email;
+      const query = { applicant_email: email };
+      const result = await productApplicationCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // New GET endpoint to get all applications with joined product data
+    app.get("/product_applications", async (req, res) => {
+      const applications = await productApplicationCollection.find().toArray();
+
+      const updatedApplications = await Promise.all(
+        applications.map(async (application) => {
+          const query1 = { _id: new ObjectId(application.product_id) };
+          const product = await productsCollection.findOne(query1);
+          if (product) {
+            application.ProductName = product.ProductName;
+            application.ProductBrand = product.ProductBrand;
+            application.ProductImageURL = product.ProductImageURL;
+            application.ProductTitle = product.ProductTitle;
+            application.ProductDescription = product.ProductDescription;
+            application.ProductPrice = product.ProductPrice;
+          }
+          return application;
+        })
+      );
+
+      res.send(updatedApplications);
+    });
+
+    // Send a ping to confirm a successful connection   
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
