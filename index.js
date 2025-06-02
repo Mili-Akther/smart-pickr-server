@@ -54,6 +54,12 @@ async function run() {
       res.send(result);
     });
 
+    app.post("/products", async (req, res) => {
+      const newProduct = req.body;
+      const result = await productsCollection.insertOne(newProduct);
+      res.send(result);
+    });
+
     // get data using email
     app.get("/product-Feedback", async (req, res) => {
       const email = req.query.email;
@@ -85,7 +91,30 @@ async function run() {
       res.send(updatedApplications);
     });
 
-    // Send a ping to confirm a successful connection   
+    // GET a single feedback by ID
+    app.get("/product-application/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await productApplicationCollection.findOne(query); 
+      res.send(result);
+    });
+
+    // PUT update feedback
+    app.put("/product-application/:id", async (req, res) => {
+      const id = req.params.id;
+      const updateData = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: updateData,
+      };
+      const result = await productApplicationCollection.updateOne(
+        filter,
+        updateDoc
+      ); 
+      res.send(result);
+    });
+
+    // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
