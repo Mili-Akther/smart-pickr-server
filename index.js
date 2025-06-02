@@ -95,7 +95,7 @@ async function run() {
     app.get("/product-application/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-      const result = await productApplicationCollection.findOne(query); 
+      const result = await productApplicationCollection.findOne(query);
       res.send(result);
     });
 
@@ -110,8 +110,21 @@ async function run() {
       const result = await productApplicationCollection.updateOne(
         filter,
         updateDoc
-      ); 
+      );
       res.send(result);
+    });
+
+    // DELETE a single feedback by ID
+    app.delete("/product-application/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await productApplicationCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error("Delete failed:", error);
+        res.status(500).send({ error: "Failed to delete feedback" });
+      }
     });
 
     // Send a ping to confirm a successful connection
