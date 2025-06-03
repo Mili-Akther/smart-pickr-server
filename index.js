@@ -127,6 +127,46 @@ async function run() {
       }
     });
 
+    // GET all queries sorted by latest date 
+    app.get("/queries", async (req, res) => {
+      try {
+        const result = await productApplicationCollection
+          .find()
+          .sort({ ProductPrice: -1 })
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Failed to fetch queries" });
+      }
+    });
+    // GET a single query by ID
+    app.get("/queries/:id", async (req, res) => {
+      const { id } = req.params;
+      try {
+        const result = await productApplicationCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Query not found" });
+      }
+    });
+
+    // PATCH: Recommend a product feedback
+    app.patch("/product-application/recommend/:id", async (req, res) => {
+      const { id } = req.params;
+      try {
+        const result = await productApplicationCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $inc: { recommendationCount: 1 } }
+        );
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to recommend", error });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
