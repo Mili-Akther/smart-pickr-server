@@ -30,9 +30,14 @@ async function run() {
 
     // products Related Apis
     const productsCollection = client.db("smartPickr").collection("products");
+
     const productApplicationCollection = client
       .db("smartPickr")
       .collection("product_applications");
+
+    const recommendationsCollection = client
+      .db("smartPickr")
+      .collection("recommendations");
 
     app.get("/products", async (req, res) => {
       const cursor = await productsCollection.find();
@@ -127,7 +132,7 @@ async function run() {
       }
     });
 
-    // GET all queries sorted by latest date 
+    // GET all queries sorted by latest price
     app.get("/queries", async (req, res) => {
       try {
         const result = await productApplicationCollection
@@ -153,19 +158,82 @@ async function run() {
       }
     });
 
-    // PATCH: Recommend a product feedback
-    app.patch("/product-application/recommend/:id", async (req, res) => {
-      const { id } = req.params;
+    // PATCH: increment recommendation count
+    // app.patch("/product-application/recommendation/:id", async (req, res) => {
+    //   const result = await applications.updateOne(
+    //     { _id: new ObjectId(req.params.id) },
+    //     { $inc: { recommendationCount: 1 } }
+    //   );
+    //   res.send(result);
+    // });
+
+    //  POST Route: Add a new recommendation
+    app.post("/recommendations", async (req, res) => {
+      try {
+        const recommendation = req.body;
+
+        // Save the recommendation
+        const result = await recommendationsCollection.insertOne(
+          recommendation
+        );
+
+        // Increase the recommendation count in the query (product_application)
+        const queryId = recommendation.queryId;
+        await productApplicationCollection.updateOne(
+          { _id: new ObjectId(queryId) },
+          { $inc: { recommendationCount: 1 } }
+        );
+
+        res.send(result);
+      } catch (error) {
+        res
+          .status(500)
+          .send({ error: "Failed to add recommendation", details: error });
+      }
+    });
+
+    // GET Route: Get all recommendations for a specific query
+    app.get("/recommendations", async (req, res) => {
+      try {
+        const result = await recommendationsCollection
+          .find({})
+          .sort({ timeStamp: -1 }) // newest first
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        res
+          .status(500)
+          .send({
+            error: "Failed to get recommendations",
+            details: error.message,
+          });
+      }
+    });
+    
+    
+
+    app.patch("/product-application/recommendation/:id", async (req, res) => {  
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $inc: { recommendationCount: 1 },
+      };
       try {
         const result = await productApplicationCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $inc: { recommendationCount: 1 } }
+          filter,
+          updateDoc
         );
         res.send(result);
       } catch (error) {
-        res.status(500).send({ message: "Failed to recommend", error });
+        res
+          .status(500)
+          .send({
+            error: "Failed to increment recommendation count",
+            details: error,
+          });
       }
     });
+    
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
