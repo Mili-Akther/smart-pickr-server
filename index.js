@@ -172,12 +172,12 @@ async function run() {
       try {
         const recommendation = req.body;
 
-        // Save the recommendation
+      
         const result = await recommendationsCollection.insertOne(
           recommendation
         );
 
-        // Increase the recommendation count in the query (product_application)
+   
         const queryId = recommendation.queryId;
         await productApplicationCollection.updateOne(
           { _id: new ObjectId(queryId) },
@@ -195,18 +195,24 @@ async function run() {
     // GET Route: Get all recommendations for a specific query
     app.get("/recommendations", async (req, res) => {
       try {
+        const { productName } = req.query;
+
+        
+        const filter = productName
+          ? { productName: productName }
+          : {};
+
         const result = await recommendationsCollection
-          .find({})
-          .sort({ timeStamp: -1 }) // newest first
+          .find(filter)
+          .sort({ timeStamp: -1 })
           .toArray();
+
         res.send(result);
       } catch (error) {
-        res
-          .status(500)
-          .send({
-            error: "Failed to get recommendations",
-            details: error.message,
-          });
+        res.status(500).send({
+          error: "Failed to get recommendations",
+          details: error.message,
+        });
       }
     });
     
