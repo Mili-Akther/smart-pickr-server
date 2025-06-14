@@ -8,8 +8,16 @@ const port = process.env.PORT || 5000;
 // middleware
 
 app.use(express.json());
-app.use(cors());
-
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://smart-pickr.web.app",
+      "https://smart-pickr.firebaseapp.com",
+    ],
+    credentials: true,
+  })
+);
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.7pf2bll.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -26,7 +34,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     // products Related Apis
     const productsCollection = client.db("smartPickr").collection("products");
@@ -38,7 +46,6 @@ async function run() {
     const recommendationsCollection = client
       .db("smartPickr")
       .collection("recommendations");
-      
 
     app.get("/products", async (req, res) => {
       const cursor = await productsCollection.find();
@@ -196,7 +203,7 @@ async function run() {
       try {
         const { productName } = req.query;
 
-        const filter = productName ? { originalProductName: productName } : {};      
+        const filter = productName ? { originalProductName: productName } : {};
 
         const result = await recommendationsCollection
           .find(filter)
@@ -260,7 +267,6 @@ async function run() {
       try {
         const { id } = req.params;
 
-       
         const recommendation = await recommendationsCollection.findOne({
           _id: new ObjectId(id),
         });
@@ -269,13 +275,11 @@ async function run() {
           return res.status(404).send({ error: "Recommendation not found" });
         }
 
-     
         const deleteResult = await recommendationsCollection.deleteOne({
           _id: new ObjectId(id),
         });
 
         if (deleteResult.deletedCount === 1) {
-         
           await productApplicationCollection.updateOne(
             { _id: new ObjectId(recommendation.queryId) },
             { $inc: { recommendationCount: -1 } }
@@ -297,17 +301,14 @@ async function run() {
       }
     });
 
-
     // GET Route: Get all recommendations made by others for the current user's queries
     app.get("/recommendations-for-me", async (req, res) => {
       const all = await recommendationsCollection.find({}).toArray();
-  res.send(all);
+      res.send(all);
     });
-    
-    
-    
+
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
