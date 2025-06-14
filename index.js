@@ -38,6 +38,7 @@ async function run() {
     const recommendationsCollection = client
       .db("smartPickr")
       .collection("recommendations");
+      
 
     app.get("/products", async (req, res) => {
       const cursor = await productsCollection.find();
@@ -172,12 +173,10 @@ async function run() {
       try {
         const recommendation = req.body;
 
-      
         const result = await recommendationsCollection.insertOne(
           recommendation
         );
 
-   
         const queryId = recommendation.queryId;
         await productApplicationCollection.updateOne(
           { _id: new ObjectId(queryId) },
@@ -197,10 +196,7 @@ async function run() {
       try {
         const { productName } = req.query;
 
-        
-        const filter = productName
-          ? { productName: productName }
-          : {};
+        const filter = productName ? { originalProductName: productName } : {};      
 
         const result = await recommendationsCollection
           .find(filter)
@@ -215,10 +211,8 @@ async function run() {
         });
       }
     });
-    
-    
 
-    app.patch("/product-application/recommendation/:id", async (req, res) => {  
+    app.patch("/product-application/recommendation/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -231,16 +225,87 @@ async function run() {
         );
         res.send(result);
       } catch (error) {
-        res
-          .status(500)
-          .send({
-            error: "Failed to increment recommendation count",
-            details: error,
-          });
+        res.status(500).send({
+          error: "Failed to increment recommendation count",
+          details: error,
+        });
       }
     });
-    
 
+    // GET Route: Get all recommendations made by a specific user
+    app.get("/my-recommendations", async (req, res) => {
+      try {
+        const { email } = req.query;
+
+        if (!email) {
+          return res.status(400).send({ error: "Email is required" });
+        }
+
+        const result = await recommendationsCollection
+          .find({ recommenderEmail: email })
+          .sort({ timeStamp: -1 })
+          .toArray();
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({
+          error: "Failed to get user recommendations",
+          details: error.message,
+        });
+      }
+    });
+
+    // DELETE Route: Delete a recommendation and decrement query count
+    app.delete("/recommendations/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+       
+        const recommendation = await recommendationsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!recommendation) {
+          return res.status(404).send({ error: "Recommendation not found" });
+        }
+
+     
+        const deleteResult = await recommendationsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        if (deleteResult.deletedCount === 1) {
+         
+          await productApplicationCollection.updateOne(
+            { _id: new ObjectId(recommendation.queryId) },
+            { $inc: { recommendationCount: -1 } }
+          );
+
+          res.send({
+            success: true,
+            message: "Recommendation deleted successfully",
+            deletedCount: deleteResult.deletedCount,
+          });
+        } else {
+          res.status(404).send({ error: "Recommendation not found" });
+        }
+      } catch (error) {
+        res.status(500).send({
+          error: "Failed to delete recommendation",
+          details: error.message,
+        });
+      }
+    });
+
+
+    // GET Route: Get all recommendations made by others for the current user's queries
+    app.get("/recommendations-for-me", async (req, res) => {
+      const all = await recommendationsCollection.find({}).toArray();
+  res.send(all);
+    });
+    
+    
+    
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
